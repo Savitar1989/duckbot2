@@ -14,8 +14,14 @@ function getAlert(chatId, type) {
   return db.prepare(`SELECT * FROM alerts WHERE chatId = ? AND type = ?`).get(chatId, type);
 }
 
+// JOIN users to avoid N+1
 function getAlertUsers(type) {
-  return db.prepare(`SELECT * FROM alerts WHERE type = ? AND enabled = 1`).all(type);
+  return db.prepare(`
+    SELECT a.chatId, a.threshold, u.playerId
+    FROM alerts a
+    JOIN users u ON a.chatId = u.chatId
+    WHERE a.type = ? AND a.enabled = 1
+  `).all(type);
 }
 
 module.exports = { setAlert, getAlert, getAlertUsers };
