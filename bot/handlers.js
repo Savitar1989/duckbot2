@@ -108,6 +108,50 @@ async function handleCallback(ctx) {
   }
 }
 
+async function positionAlert(ctx) {
+  await ctx.reply("🔔 Position alert feature coming soon.");
+}
+
+async function duckSniper(ctx) {
+  await ctx.reply("🎯 Duck sniper feature coming soon.");
+}
+
+async function breeding(ctx) {
+  await ctx.reply("🐣 Breeding menu coming soon.");
+}
+
+async function addLink(ctx) {
+  await ctx.reply("➕ Send your breeding link.");
+}
+
+async function myLinks(ctx) {
+  await ctx.reply("📜 Your links feature.");
+}
+
+async function findMatch(ctx) {
+  await ctx.reply("🔍 Finding match...");
+}
+
+async function breedingSettings(ctx) {
+  await ctx.reply("⚙️ Breeding settings.");
+}
+
+async function goBack(ctx) {
+  await ctx.reply("⬅️ Back");
+}
+
+async function handleText(ctx) {
+  const text = ctx.message?.text;
+
+  if (text === "/start") return start(ctx);
+  if (text === "📈 Market") return market(ctx);
+  if (text === "🦆 My Ducks") return myDucks(ctx);
+  if (text === "🔔 Position Alert") return positionAlert(ctx);
+  if (text === "🎯 Duck Sniper") return duckSniper(ctx);
+  if (text === "🐣 Breeding") return breeding(ctx);
+  if (text === "🔙 Back") return goBack(ctx);
+}
+
 module.exports = {
   start, market, myDucks, positionAlert, duckSniper,
   breeding, addLink, myLinks, findMatch, breedingSettings,
