@@ -24,61 +24,39 @@ async function fetchMarket(quality, offset = 0) {
   }
 }
 
-/**
- * Breeding link validáció.
- * 
- * A link formátuma: https://t.me/duckmyduck_bot?start=bXXXXXX
- * ahol XXXXXX a breedingSecret (hex string), NEM a duck id.
- * 
- * Az API-ban a duck.state mezők:
- *   "FEED"      = nem párzik, elérhető
- *   "BREEDING"  = már párzik
- *   "MARKET"    = marketen van
- *   stb.
- * 
- * A breedingLink mező a duck objectben tartalmazza a teljes linket ha aktív.
- */
-async function validateBreedingLink(link) {
-  // Format check - a secret hex string, nem csak szám
-  const match = link.match(/start=b([a-zA-Z0-9]+)/);
-  if (!match) {
-    return { valid: false, reason: "invalid_format" };
+async function fetchRecentSales() {
+  try {
+    const res = await api.get("/market/sales");
+    return res.data?.response || [];
+  } catch (e) {
+    console.log("❌ fetchRecentSales error");
+    return [];
   }
+}
+
+async function validateBreedingLink(link) {
+  const match = link.match(/start=b([a-zA-Z0-9]+)/);
+  if (!match) return { valid: false, reason: "invalid_format" };
 
   const breedingSecret = match[1];
 
-  // A market API-n keresztül próbáljuk megtalálni a kacsát breeding secret alapján.
-  // Mivel nincs közvetlen /duck/:secret endpoint, a linket magát elfogadjuk
-  // ha a formátum helyes, és csak a nyilvánvaló hibákat szűrjük ki.
-  // Ha az API-nak van /breeding/:secret endpoint, azt használjuk.
-
   try {
-    // Próbáljuk a breeding info endpointot
     const res = await api.get(`/breeding/${breedingSecret}`);
     const data = res.data?.response || res.data;
 
     if (!data) return { valid: false, reason: "not_found" };
 
-    // Ha van state mező, ellenőrizzük
     const state = data.state || data.duck?.state;
     if (state === "BREEDING") {
       return { valid: false, reason: "already_breeding", duck: data };
     }
 
     return { valid: true, breedingSecret, duck: data };
-
   } catch (e) {
     const status = e.response?.status;
-
-    if (status === 404) {
-      // 404 = nincs ilyen breeding link (lejárt, nem létező)
-      return { valid: false, reason: "not_found" };
-    }
-
-    // Más hiba (pl. 500, timeout) → elfogadjuk a linket de jelezzük
-    console.log("⚠️ validateBreedingLink error:", status, breedingSecret);
+    if (status === 404) return { valid: false, reason: "not_found" };
     return { valid: true, breedingSecret, unverified: true };
   }
 }
 
-module.exports = { fetchMarket, validateBreedingLink };
+module.exports = { fetchMarket, fetchRecentSales, validateBreedingLink };
