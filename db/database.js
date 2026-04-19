@@ -72,13 +72,25 @@ CREATE TABLE IF NOT EXISTS bot_state (
   state TEXT,
   data TEXT
 );
+
+-- NEW: sales table
+CREATE TABLE IF NOT EXISTS sales (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  duck_id INTEGER,
+  quality TEXT,
+  level INTEGER,
+  size TEXT,
+  price REAL,
+  currency TEXT,
+  timestamp INTEGER
+);
+
+CREATE INDEX IF NOT EXISTS idx_sales_time ON sales(timestamp);
+CREATE INDEX IF NOT EXISTS idx_sales_group ON sales(quality, level, size, currency);
 `);
 
-// 🔧 SAFE MIGRATION: add updated_at column if missing
 try {
   db.prepare("ALTER TABLE bot_state ADD COLUMN updated_at INTEGER").run();
-} catch (e) {
-  // column already exists → ignore
-}
+} catch (e) {}
 
 module.exports = db;
