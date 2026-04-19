@@ -29,7 +29,7 @@ async function fetchRecentSales() {
     const res = await api.get("/market/sales");
     return res.data?.response || [];
   } catch (e) {
-    console.log("❌ fetchRecentSales error");
+    // silent fail to avoid spam
     return [];
   }
 }
