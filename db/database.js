@@ -74,4 +74,11 @@ CREATE TABLE IF NOT EXISTS bot_state (
 );
 `);
 
+// 🔧 SAFE MIGRATION: add updated_at column if missing
+try {
+  db.prepare("ALTER TABLE bot_state ADD COLUMN updated_at INTEGER").run();
+} catch (e) {
+  // column already exists → ignore
+}
+
 module.exports = db;
