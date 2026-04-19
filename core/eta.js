@@ -104,14 +104,20 @@ function computeETA(duckId, historyRows, currentPos) {
   const usedSamples = filtered.length >= MIN_SAMPLES ? filtered : samples;
 
   let confidence = 0;
-  if (usedSamples.length >= MIN_SAMPLES) {
-    const cv = sigma / mu;
 
-    const stability = Math.max(0, 1 - cv);
-    const sampleFactor = Math.min(1, usedSamples.length / 10);
+if (usedSamples.length >= MIN_SAMPLES) {
+  const cv = sigma / mu;
 
-    confidence = Math.round(stability * sampleFactor * 100);
-  }
+  const stability = Math.max(0, 1 - cv);
+  const sampleFactor = Math.min(1, usedSamples.length / 10);
+
+  // --- Kalman confidence ---
+  const kalmanUncertainty = kalmanState[duckId]?.p ?? 1;
+  const kalmanFactor = 1 / (1 + kalmanUncertainty); // lower p = higher confidence
+
+  // --- Combined confidence ---
+  confidence = Math.round(stability * sampleFactor * kalmanFactor * 100);
+}
 
   return {
     eta: Math.round(eta),
