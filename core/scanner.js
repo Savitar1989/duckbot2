@@ -1,11 +1,11 @@
 const { QUALITIES, POLL_INTERVAL } = require("../config");
-const { fetchMarket } = require("./api");
+const { fetchMarket, fetchRecentSales } = require("./api");
 const { computeETA } = require("./eta");
 const { saveDucksBulk } = require("../db/ducks");
+const { saveSalesBulk } = require("../db/sales");
 const { handleEvent } = require("../services/alert.service");
 
-// In-memory state
-const state = new Map(); // id -> last snapshot
+const state = new Map();
 const lastAlert = new Map();
 
 const MIN_MOVE = 3;
@@ -73,7 +73,6 @@ async function scanQuality(quality) {
     state.set(id, current);
   }
 
-  // detect removals
   for (const id of state.keys()) {
     if (!currentIds.has(id)) {
       handleEvent({ type: "DUCK_REMOVED", duckId: id });
@@ -84,11 +83,30 @@ async function scanQuality(quality) {
   saveDucksBulk(toSave);
 }
 
+async function scanSales() {
+  const sales = await fetchRecentSales();
+  if (!sales.length) return;
+
+  const mapped = sales.map(s => ({
+    duckId: s.id,
+    quality: s.quality,
+    level: s.level,
+    size: s.size,
+    price: s.price,
+    currency: s.currency,
+    timestamp: Date.now()
+  }));
+
+  saveSalesBulk(mapped);
+}
+
 async function runScanner() {
   while (true) {
     console.log("\n🔁 NEW SCAN —", new Date().toLocaleTimeString());
 
     await Promise.all(QUALITIES.map(scanQuality));
+
+    await scanSales();
 
     await new Promise(r => setTimeout(r, POLL_INTERVAL));
   }
