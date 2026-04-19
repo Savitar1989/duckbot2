@@ -8,58 +8,63 @@ function registerBot(instance) {
   bot = instance;
 }
 
+const sentCache = new Map();
+const MIN_MOVE = 3;
+
 async function handleEvent(event) {
   if (!bot) return;
 
-  // ── Position change alert
   if (event.type === "POSITION_CHANGE") {
     const users = getAlertUsers("POSITION");
+
+    const promises = [];
 
     for (const alertRow of users) {
       const chatId = alertRow.chatId;
       const playerId = getPlayerId(chatId);
 
-      // Csak a kacsa tulajdonosának küldünk
       if (!playerId || event.ownerId !== playerId) continue;
 
       const threshold = alertRow.threshold;
 
-      // Ha van threshold: értesítés csak akkor ha a kacsa ELÉRTE vagy ÁTLÉPTE
-      // (pozíció csökken ahogy a kacsa előre jön → from > threshold && to <= threshold)
       if (threshold) {
         const crossed = event.from > threshold && event.to <= threshold;
         if (!crossed) continue;
+      } else {
+        if (Math.abs(event.from - event.to) < MIN_MOVE) continue;
       }
-      // Ha nincs threshold: minden változásnál értesítés
+
+      const key = `${chatId}_${event.duckId}_${event.to}`;
+      if (sentCache.has(key)) continue;
+      sentCache.set(key, Date.now());
 
       const eta = formatETARange(event.eta_low, event.eta_high, event.confidence);
       const arrow = event.to < event.from ? "⬆️" : "⬇️";
 
-      await bot.telegram.sendMessage(
-        chatId,
-        `📍 *Pozíció változás!*\n\n` +
-        `Duck #${event.duckId}\n` +
-        `${arrow} ${event.from} → ${event.to}\n` +
-        `${eta}`,
-        { parse_mode: "Markdown" }
-      ).catch(e => console.error("Alert send error:", e.message));
+      promises.push(
+        bot.telegram.sendMessage(
+          chatId,
+          `📍 *Pozíció változás!*\n\nDuck #${event.duckId}\n${arrow} ${event.from} → ${event.to}\n${eta}`,
+          { parse_mode: "Markdown" }
+        )
+      );
     }
+
+    await Promise.allSettled(promises);
   }
 
-  // ── Sniper hit
   if (event.type === "SNIPER_HIT") {
     const ducks = event.ducks || [];
-    let msg = `🎯 *Duck Sniper Alert!*\n\nA keresett kacsák elérték a pozíció küszöböt:\n\n`;
+    let msg = `🎯 *Duck Sniper Alert!*\n\n`;
 
     for (const d of ducks) {
       const qe = { COMMON:"⚪", UNCOMMON:"🟢", RARE:"🔵", EPIC:"🟣", LEGENDARY:"🟡" }[d.quality] || "⚪";
       const eta = formatETARange(d.eta_low, d.eta_high, d.confidence);
-      msg += `${qe} ${d.quality} Lvl${d.level} — #${d.position}. pozíció\n`;
-      msg += `  ${eta}\n\n`;
+      msg += `${qe} ${d.quality} Lvl${d.level} — #${d.position}\n${eta}\n\n`;
     }
 
     await bot.telegram.sendMessage(event.chatId, msg, { parse_mode: "Markdown" })
-      .catch(e => console.error("Sniper send error:", e.message));
+      .catch(() => {});
   }
 }
 
