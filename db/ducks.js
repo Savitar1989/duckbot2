@@ -20,11 +20,18 @@ function saveDucksBulk(ducks) {
     INSERT INTO duck_history (duck_id, position, timestamp) VALUES (?, ?, ?)
   `);
 
+  const getPrev = db.prepare(`SELECT position FROM ducks WHERE id = ?`);
+
   const trx = db.transaction((rows) => {
     for (const d of rows) {
+      const prev = getPrev.get(d.id);
+
       upsert.run(d.id, d.quality, d.level, d.ownerId, d.position,
         d.eta_low ?? null, d.eta_high ?? null, d.confidence ?? 0, d.speed_avg ?? null, d.timestamp);
-      insertHistory.run(d.id, d.position, d.timestamp);
+
+      if (!prev || prev.position !== d.position) {
+        insertHistory.run(d.id, d.position, d.timestamp);
+      }
     }
   });
 
@@ -42,8 +49,8 @@ function getDuckHistory(duckId, limit = 20) {
   `).all(duckId, limit);
 }
 
-function getAllActiveDucks() {
-  return db.prepare(`SELECT * FROM ducks ORDER BY position ASC`).all();
+function getAllActiveDucks(limit = 200) {
+  return db.prepare(`SELECT * FROM ducks ORDER BY position ASC LIMIT ?`).all(limit);
 }
 
 module.exports = { saveDucksBulk, getUserMarketDucks, getDuckHistory, getAllActiveDucks };
