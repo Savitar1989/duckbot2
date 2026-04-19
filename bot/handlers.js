@@ -61,18 +61,21 @@ async function myDucks(ctx) {
   await ctx.reply(msg, { parse_mode: "Markdown" });
 }
 
-// ... (unchanged code omitted for brevity)
+// ensure callback handler is async
+async function handleCallback(ctx) {
+  const cbData = ctx.callbackQuery?.data;
+  const chatId = ctx.chat.id;
 
-  if (cbData.startsWith("fl_")) {
+  // existing logic continues below...
+
+  if (cbData && cbData.startsWith("fl_")) {
     const level = Number(cbData.slice(3));
     const { data: stateData } = getState(chatId);
     if (!stateData?.quality) { clearState(chatId); return ctx.reply("❌ Hibás állapot."); }
 
-    // 🔥 NEW: get user's duck for proper matching
     const playerId = getPlayerId(chatId);
     const userDucks = playerId ? getUserMarketDucks(playerId) : [];
 
-    // pick best matching duck
     const userDuck = userDucks.find(d =>
       d.quality === stateData.quality && d.level >= level
     ) || userDucks[0] || null;
@@ -90,7 +93,9 @@ async function myDucks(ctx) {
     if (!hasCriteria) {
       clearState(chatId);
       await ctx.editMessageText("✅ Match megvan!").catch(() => {});
-      await sendMatchFound(ctx, match);
+      if (typeof sendMatchFound === 'function') {
+        await sendMatchFound(ctx, match);
+      }
     } else {
       setState(chatId, "FIND_WAITING_MY_LINK", { matchId: match.id, quality: stateData.quality, level });
       let criteria = "Ez a kacsa kritériumokhoz kötött:\n";
@@ -101,6 +106,7 @@ async function myDucks(ctx) {
     }
     return;
   }
+}
 
 module.exports = {
   start, market, myDucks, positionAlert, duckSniper,
