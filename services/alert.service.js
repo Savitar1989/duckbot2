@@ -1,5 +1,4 @@
 const { getAlertUsers } = require("../db/alerts");
-const { getPlayerId } = require("../db/users");
 const { formatETARange } = require("../core/eta");
 
 let bot = null;
@@ -21,7 +20,7 @@ async function handleEvent(event) {
 
     for (const alertRow of users) {
       const chatId = alertRow.chatId;
-      const playerId = getPlayerId(chatId);
+      const playerId = alertRow.playerId;
 
       if (!playerId || event.ownerId !== playerId) continue;
 
@@ -63,8 +62,7 @@ async function handleEvent(event) {
       msg += `${qe} ${d.quality} Lvl${d.level} — #${d.position}\n${eta}\n\n`;
     }
 
-    await bot.telegram.sendMessage(event.chatId, msg, { parse_mode: "Markdown" })
-      .catch(() => {});
+    await bot.telegram.sendMessage(event.chatId, msg, { parse_mode: "Markdown" }).catch(()=>{});
   }
 }
 
