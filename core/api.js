@@ -1,9 +1,17 @@
 const axios = require("axios");
+const http = require("http");
+const https = require("https");
 const { API_TOKEN } = require("../config");
+
+// ✅ FIX: use keep-alive agents to prevent socket listener leaks
+const httpAgent = new http.Agent({ keepAlive: true, maxSockets: 50 });
+const httpsAgent = new https.Agent({ keepAlive: true, maxSockets: 50 });
 
 const api = axios.create({
   baseURL: "https://api.duckmyduck.com",
   timeout: 10000,
+  httpAgent,
+  httpsAgent,
   headers: {
     Authorization: API_TOKEN,
     "Content-Type": "application/json"
@@ -29,7 +37,6 @@ async function fetchRecentSales() {
     const res = await api.get("/market/sales");
     return res.data?.response || [];
   } catch (e) {
-    // silent fail to avoid spam
     return [];
   }
 }
